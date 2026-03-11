@@ -13,6 +13,7 @@ import { TransactionsList } from "@/components/search/transactions-list";
 import { OtherAmcMessage } from "@/components/search/other-amc-message";
 import { ServiceResults } from "@/components/search/service-results";
 import { aiSummary, fundResults } from "@/lib/data";
+import { AssistantChatModal } from "@/components/assistant-chat-modal";
 
 interface SearchPageContentProps {
   query: string;
@@ -21,6 +22,7 @@ interface SearchPageContentProps {
 export function SearchPageContent({ query }: SearchPageContentProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(query);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const handleSearch = (newQuery: string) => {
     setSearchQuery(newQuery);
@@ -119,7 +121,10 @@ export function SearchPageContent({ query }: SearchPageContentProps) {
                 <p className="mb-6 text-muted-foreground">
                   Start a conversation with AxisMF Assistant for personalized help
                 </p>
-                <Button className="rounded-full bg-primary px-6 text-primary-foreground hover:bg-primary/90">
+                <Button 
+                  onClick={() => setIsChatOpen(true)}
+                  className="rounded-full bg-primary px-6 text-primary-foreground hover:bg-primary/90"
+                >
                   Ask AxisMF Assistant
                 </Button>
               </CardContent>
@@ -127,6 +132,12 @@ export function SearchPageContent({ query }: SearchPageContentProps) {
           </>
         )}
       </div>
+
+      {/* Assistant Chat Modal */}
+      <AssistantChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+      />
     </div>
   );
 }
