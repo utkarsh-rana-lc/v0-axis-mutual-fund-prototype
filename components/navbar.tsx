@@ -4,9 +4,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 const navLinks = [
-  { label: "Explore Funds", href: "#" },
-  { label: "Invest", href: "#" },
-  { label: "Services", href: "#" },
+  { label: "Explore Funds", href: "/" },
+  { label: "Invest", href: "/" },
+  { label: "Services", href: "/" },
 ];
 
 export function Navbar() {
