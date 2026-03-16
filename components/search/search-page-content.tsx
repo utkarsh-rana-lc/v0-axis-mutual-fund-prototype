@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, MessageCircle } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SearchBar } from "@/components/search-bar";
 import { FundCard } from "@/components/search/fund-card";
 import { SimilarFundsSection } from "@/components/search/similar-funds";
 import { TransactionsList } from "@/components/search/transactions-list";
 import { OtherAmcMessage } from "@/components/search/other-amc-message";
 import { ServiceResults } from "@/components/search/service-results";
-import { aiSummary, fundResults } from "@/lib/data";
 import { AssistantChatModal } from "@/components/assistant-chat-modal";
+import { searchFunds } from "@/lib/api";
+import type { Fund } from "@/lib/types";
 
 interface SearchPageContentProps {
   query: string;
@@ -24,6 +26,11 @@ export function SearchPageContent({ query }: SearchPageContentProps) {
   const [searchQuery, setSearchQuery] = useState(query);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
+  const [summary, setSummary] = useState<string>("");
+  const [funds, setFunds] = useState<Fund[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const handleSearch = (newQuery: string) => {
     setSearchQuery(newQuery);
     router.push(`/search?q=${encodeURIComponent(newQuery)}`);
@@ -31,8 +38,29 @@ export function SearchPageContent({ query }: SearchPageContentProps) {
 
   // Detect query type
   const isOtherAmc = query.toLowerCase().includes("sbi");
-  const isServiceQuery = query.toLowerCase().includes("bank") || query.toLowerCase().includes("account");
+  const isServiceQuery =
+    query.toLowerCase().includes("bank") ||
+    query.toLowerCase().includes("account");
   const isFundQuery = !isOtherAmc && !isServiceQuery;
+
+  useEffect(() => {
+    if (!isFundQuery) return;
+
+    setIsLoading(true);
+    setError(null);
+    setFunds([]);
+    setSummary("");
+
+    searchFunds(query)
+      .then((result) => {
+        setSummary(result.summary);
+        setFunds(result.funds);
+      })
+      .catch((err: Error) => {
+        setError(err.message || "Something went wrong. Please try again.");
+      })
+      .finally(() => setIsLoading(false));
+  }, [query, isFundQuery]);
 
   return (
     <div className="px-4 py-8 sm:px-6">
@@ -64,12 +92,22 @@ export function SearchPageContent({ query }: SearchPageContentProps) {
                     <Sparkles className="size-4 text-primary" />
                   </div>
                   <h2 className="font-semibold text-foreground">
-                    {aiSummary.title}
+                    AI-Powered Summary
                   </h2>
                 </div>
-                <p className="mb-4 text-muted-foreground">{aiSummary.content}</p>
+                {isLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-4/5" />
+                  </div>
+                ) : error ? (
+                  <p className="text-sm text-destructive">{error}</p>
+                ) : (
+                  <p className="mb-4 text-muted-foreground">{summary}</p>
+                )}
                 <p className="text-xs text-muted-foreground/70">
-                  {aiSummary.disclaimer}
+                  Mutual fund investments are subject to market risks, read all
+                  scheme related documents carefully.
                 </p>
               </CardContent>
             </Card>
@@ -92,16 +130,32 @@ export function SearchPageContent({ query }: SearchPageContentProps) {
               </TabsList>
 
               <TabsContent value="funds" className="mt-6">
-                <div className="space-y-6">
-                  {/* First Fund Card */}
-                  <FundCard fund={fundResults[0]} />
-
-                  {/* Similar Funds Section */}
-                  <SimilarFundsSection />
-
-                  {/* Second Fund Card */}
-                  <FundCard fund={fundResults[1]} />
-                </div>
+                {isLoading ? (
+                  <div className="space-y-6">
+                    <FundCardSkeleton />
+                    <FundCardSkeleton />
+                  </div>
+                ) : error ? (
+                  <div className="rounded-2xl border border-border p-8 text-center text-muted-foreground">
+                    <p>Unable to load funds. Please try your search again.</p>
+                  </div>
+                ) : funds.length === 0 ? (
+                  <div className="rounded-2xl border border-border p-8 text-center text-muted-foreground">
+                    <p>No funds found for your query.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <FundCard fund={funds[0]} />
+                    {funds.length > 1 && (
+                      <>
+                        <SimilarFundsSection />
+                        {funds.slice(1).map((fund) => (
+                          <FundCard key={fund.id} fund={fund} />
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="transactions" className="mt-6">
@@ -119,9 +173,10 @@ export function SearchPageContent({ query }: SearchPageContentProps) {
                   Have more questions?
                 </h3>
                 <p className="mb-6 text-muted-foreground">
-                  Start a conversation with AxisMF Assistant for personalized help
+                  Start a conversation with AxisMF Assistant for personalised
+                  help
                 </p>
-                <Button 
+                <Button
                   onClick={() => setIsChatOpen(true)}
                   className="rounded-full bg-primary px-6 text-primary-foreground hover:bg-primary/90"
                 >
@@ -138,6 +193,22 @@ export function SearchPageContent({ query }: SearchPageContentProps) {
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
       />
+    </div>
+  );
+}
+
+function FundCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border p-6 space-y-4">
+      <Skeleton className="h-5 w-2/3" />
+      <Skeleton className="h-4 w-24 rounded-full" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-4/5" />
+      <div className="flex gap-6 pt-2">
+        <Skeleton className="h-10 w-20" />
+        <Skeleton className="h-10 w-20" />
+        <Skeleton className="h-10 w-20" />
+      </div>
     </div>
   );
 }
