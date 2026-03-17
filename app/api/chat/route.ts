@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = "https://spacy-i2uu320jsk.limechat.ai";
+const API_BASE_URL = "https://delightsome-uncrudely-drucilla.ngrok-free.app";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
